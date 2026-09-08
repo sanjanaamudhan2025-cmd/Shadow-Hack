@@ -151,8 +151,10 @@ Content:
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+    recent_history = req.history[-6:]
+
     history_text = ""
-    for msg in req.history:
+    for msg in recent_history:
         speaker = "Student" if msg.role == "user" else "Tutor"
         history_text += f"{speaker}: {msg.content}\n"
 
@@ -164,7 +166,7 @@ Keep answers clear and concise, using markdown formatting (bullet points, bold) 
 Textbook content:
 {req.text}
 
-Conversation so far:
+Recent conversation:
 {history_text}
 
 Student's new question:
