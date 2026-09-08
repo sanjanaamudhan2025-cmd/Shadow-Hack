@@ -1,41 +1,97 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export function FlashcardGrid({ cards }) {
-  const [flipped, setFlipped] = useState({})
+  const [index, setIndex] = useState(0)
+  const [flipped, setFlipped] = useState(false)
+  const [studyMode, setStudyMode] = useState('term') // 'term' = front shown first, 'definition' = back shown first
 
-  const toggle = (i) => {
-    setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))
+  const changeMode = (mode) => {
+    setStudyMode(mode)
+    setFlipped(false)
   }
 
+  const goNext = useCallback(() => {
+    setFlipped(false)
+    setIndex((i) => (i + 1) % cards.length)
+  }, [cards.length])
+
+  const goPrev = useCallback(() => {
+    setFlipped(false)
+    setIndex((i) => (i - 1 + cards.length) % cards.length)
+  }, [cards.length])
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'ArrowRight') goNext()
+      else if (e.key === 'ArrowLeft') goPrev()
+      else if (e.key === ' ') {
+        e.preventDefault()
+        setFlipped((f) => !f)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [goNext, goPrev])
+
+  if (!cards || cards.length === 0) return null
+
+  const card = cards[index]
+  const frontText = studyMode === 'term' ? card.front : card.back
+  const backText = studyMode === 'term' ? card.back : card.front
+
   return (
-    <div className="mt-6 grid grid-cols-2 gap-4 text-left">
-      {cards.map((f, i) => (
+    <div>
+      <div className="mt-6 flex items-center justify-center gap-2">
+        <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+          Show first:
+        </span>
+        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <button
+            onClick={() => changeMode('term')}
+            className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+              studyMode === 'term' ? 'bg-indigo-600 text-white' : ''
+            }`}
+            style={studyMode !== 'term' ? { color: 'var(--text)' } : undefined}
+          >
+            Term
+          </button>
+          <button
+            onClick={() => changeMode('definition')}
+            className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+              studyMode === 'definition' ? 'bg-indigo-600 text-white' : ''
+            }`}
+            style={studyMode !== 'definition' ? { color: 'var(--text)' } : undefined}
+          >
+            Definition
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 mx-auto max-w-3xl" style={{ perspective: '1500px' }}>
         <div
-          key={i}
-          onClick={() => toggle(i)}
-          className="relative h-40 cursor-pointer"
-          style={{ perspective: '1000px' }}
+          onClick={() => setFlipped((f) => !f)}
+          className="relative w-full h-96 cursor-pointer rounded-2xl"
         >
           <div
             className="relative w-full h-full transition-transform duration-500"
             style={{
               transformStyle: 'preserve-3d',
-              transform: flipped[i] ? 'rotateY(180deg)' : 'rotateY(0deg)',
+              transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
             }}
           >
             <div
-              className="absolute w-full h-full rounded-xl p-4 flex items-center justify-center text-center shadow-md"
+              className="absolute w-full h-full rounded-2xl p-8 flex items-center justify-center text-center shadow-xl"
               style={{
                 backfaceVisibility: 'hidden',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: 'white',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border)',
               }}
             >
-              <p className="font-semibold">{f.front}</p>
+              <p className="text-3xl font-semibold">{frontText}</p>
             </div>
 
             <div
-              className="absolute w-full h-full rounded-xl p-4 flex items-center justify-center text-center shadow-md"
+              className="absolute w-full h-full rounded-2xl p-8 flex items-center justify-center text-center shadow-xl"
               style={{
                 backfaceVisibility: 'hidden',
                 transform: 'rotateY(180deg)',
@@ -43,18 +99,59 @@ export function FlashcardGrid({ cards }) {
                 border: '1px solid var(--border)',
               }}
             >
-              <p className="text-sm">{f.back}</p>
+              <p className="text-xl">{backText}</p>
             </div>
           </div>
         </div>
-      ))}
+      </div>
+
+      <div className="mt-6 flex items-center justify-center gap-6">
+        <button
+          onClick={goPrev}
+          className="w-11 h-11 flex items-center justify-center rounded-full border transition-colors hover:bg-black/5"
+          style={{ borderColor: 'var(--border)' }}
+          aria-label="Previous card"
+        >
+          ←
+        </button>
+
+        <span className="text-sm font-medium tabular-nums" style={{ color: 'var(--text-muted)' }}>
+          {index + 1} / {cards.length}
+        </span>
+
+        <button
+          onClick={goNext}
+          className="w-11 h-11 flex items-center justify-center rounded-full border transition-colors hover:bg-black/5"
+          style={{ borderColor: 'var(--border)' }}
+          aria-label="Next card"
+        >
+          →
+        </button>
+      </div>
+
+      <p className="mt-3 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+        Click the card to flip · Use ← → arrow keys or spacebar
+      </p>
     </div>
   )
 }
 
-export function InteractiveQuiz({ questions, onComplete }) {
+export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }) {
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(durationSeconds)
+
+  useEffect(() => {
+    if (submitted) return
+    if (timeLeft <= 0) {
+      handleSubmit()
+      return
+    }
+    const timer = setInterval(() => {
+      setTimeLeft((t) => t - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [timeLeft, submitted])
 
   const selectAnswer = (qIndex, optIndex) => {
     if (submitted) return
@@ -72,8 +169,26 @@ export function InteractiveQuiz({ questions, onComplete }) {
     if (onComplete) onComplete(percent)
   }
 
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  const isLowTime = timeLeft <= 60 && !submitted
+
   return (
     <div className="mt-6 text-left">
+      {!submitted && (
+        <div
+          className={`mb-6 sticky top-0 z-10 rounded-xl px-4 py-2 text-center font-bold text-lg ${
+            isLowTime ? 'bg-red-500/15 text-red-500' : 'bg-indigo-500/15 text-indigo-500'
+          }`}
+        >
+          ⏱ {formatTime(timeLeft)}
+        </div>
+      )}
+
       {questions.map((q, i) => (
         <div key={i} className="mb-6">
           <p className="font-semibold mb-2">{i + 1}. {q.question}</p>
@@ -113,6 +228,7 @@ export function InteractiveQuiz({ questions, onComplete }) {
       ) : (
         <div className="mt-4 p-4 rounded-xl bg-indigo-50 text-indigo-700 font-semibold text-center">
           You scored {score} / {questions.length} ({Math.round((score / questions.length) * 100)}%)
+          {timeLeft <= 0 && <p className="text-sm font-normal mt-1">Time ran out — auto-submitted.</p>}
         </div>
       )}
     </div>

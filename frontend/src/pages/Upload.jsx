@@ -10,7 +10,6 @@ function Upload() {
   const [generating, setGenerating] = useState(null)
   const navigate = useNavigate()
 
-  // Restore last uploaded PDF when returning to this page
   useEffect(() => {
     const savedText = localStorage.getItem('lwt_pdf_text')
     const savedInfo = localStorage.getItem('lwt_pdf_info')
@@ -58,6 +57,13 @@ function Upload() {
   }
 
   const generate = async (type) => {
+    // Quiz generation now happens on the Quiz page itself,
+    // so the user can choose the question count there.
+    if (type === 'quiz') {
+      navigate('/quiz')
+      return
+    }
+
     setGenerating(type)
     try {
       const res = await fetch(`http://127.0.0.1:8000/generate/${type}`, {
@@ -67,10 +73,7 @@ function Upload() {
       })
       const data = await res.json()
 
-      if (type === 'quiz') {
-        localStorage.setItem('lwt_last_quiz', JSON.stringify(data))
-        navigate('/quiz')
-      } else if (type === 'flashcards') {
+      if (type === 'flashcards') {
         localStorage.setItem('lwt_last_flashcards', JSON.stringify(data))
         navigate('/flashcards')
       } else if (type === 'summary') {
@@ -156,7 +159,7 @@ function Upload() {
               Choose what to generate from this file:
             </p>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 onClick={() => generate('course')}
                 disabled={generating}
@@ -166,10 +169,9 @@ function Upload() {
               </button>
               <button
                 onClick={() => generate('quiz')}
-                disabled={generating}
-                className="px-4 py-3 rounded-xl bg-orange-500 text-white font-medium disabled:opacity-50"
+                className="px-4 py-3 rounded-xl bg-orange-500 text-white font-medium"
               >
-                {generating === 'quiz' ? 'Generating...' : '📝 Generate Quiz'}
+                📝 Generate Quiz
               </button>
               <button
                 onClick={() => generate('flashcards')}
