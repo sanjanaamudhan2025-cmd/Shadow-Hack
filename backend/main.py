@@ -46,6 +46,11 @@ class TextRequest(BaseModel):
     text: str
 
 
+class QuizRequest(BaseModel):
+    text: str
+    num_questions: int = 5
+
+
 def ask_gemini(prompt: str):
     response = client.models.generate_content(
         model="gemini-3.6-flash",
@@ -75,9 +80,11 @@ Content:
 
 
 @app.post("/generate/quiz")
-def generate_quiz(req: TextRequest):
+def generate_quiz(req: QuizRequest):
+    count = max(1, min(req.num_questions, 30))
+
     prompt = f"""
-Based on the following content, create a 5-question multiple choice quiz.
+Based on the following content, create a {count}-question multiple choice quiz.
 Return ONLY valid JSON, no extra text, in this exact format:
 {{
   "questions": [
@@ -88,6 +95,8 @@ Return ONLY valid JSON, no extra text, in this exact format:
     }}
   ]
 }}
+
+The "questions" array must contain exactly {count} questions.
 
 Content:
 {req.text}
