@@ -23,7 +23,14 @@ export default function Sidebar({ children }) {
   return (
     <div style={{ background: 'var(--bg)', color: 'var(--text)' }} className="min-h-screen flex">
       <aside
-        style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}
+        style={{
+          background: 'var(--card-bg)',
+          borderColor: 'var(--border)',
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          overflowY: 'auto',
+        }}
         className="w-64 flex-shrink-0 border-r flex flex-col p-5 hidden md:flex"
       >
         <div className="flex items-center gap-2 mb-8">

@@ -140,9 +140,12 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState(durationSeconds)
+  const [paused, setPaused] = useState(false)
+  const [confirmingEnd, setConfirmingEnd] = useState(false)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
 
   useEffect(() => {
-    if (submitted) return
+    if (submitted || paused) return
     if (timeLeft <= 0) {
       handleSubmit()
       return
@@ -151,7 +154,7 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
       setTimeLeft((t) => t - 1)
     }, 1000)
     return () => clearInterval(timer)
-  }, [timeLeft, submitted])
+  }, [timeLeft, submitted, paused])
 
   const selectAnswer = (qIndex, optIndex) => {
     if (submitted) return
@@ -165,8 +168,23 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
 
   const handleSubmit = () => {
     setSubmitted(true)
+    setPaused(false)
+    setConfirmingEnd(false)
     const percent = Math.round((score / questions.length) * 100)
     if (onComplete) onComplete(percent)
+  }
+
+  const togglePause = () => {
+    setPaused((p) => !p)
+  }
+
+  const restartQuiz = () => {
+    setAnswers({})
+    setSubmitted(false)
+    setPaused(false)
+    setConfirmingEnd(false)
+    setConfirmingRestart(false)
+    setTimeLeft(durationSeconds)
   }
 
   const formatTime = (secs) => {
@@ -180,12 +198,80 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
   return (
     <div className="mt-6 text-left">
       {!submitted && (
-        <div
-          className={`mb-6 sticky top-0 z-10 rounded-xl px-4 py-2 text-center font-bold text-lg ${
-            isLowTime ? 'bg-red-500/15 text-red-500' : 'bg-indigo-500/15 text-indigo-500'
-          }`}
-        >
-          ⏱ {formatTime(timeLeft)}
+        <div className="mb-6 sticky top-0 z-10 flex flex-wrap items-center justify-center gap-3">
+          <div
+            className={`rounded-xl px-4 py-2 text-center font-bold text-lg ${
+              paused
+                ? 'bg-gray-500/15 text-gray-500'
+                : isLowTime
+                ? 'bg-red-500/15 text-red-500'
+                : 'bg-indigo-500/15 text-indigo-500'
+            }`}
+          >
+            ⏱ {formatTime(timeLeft)} {paused && '(paused)'}
+          </div>
+
+          <button
+            onClick={togglePause}
+            className="px-4 py-2 rounded-xl border text-sm font-medium"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {paused ? '▶ Resume' : '⏸ Pause'}
+          </button>
+
+          {!confirmingRestart ? (
+            <button
+              onClick={() => setConfirmingRestart(true)}
+              className="px-4 py-2 rounded-xl border text-sm font-medium"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              🔄 Restart
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Restart from scratch?</span>
+              <button
+                onClick={restartQuiz}
+                className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium"
+              >
+                Yes, restart
+              </button>
+              <button
+                onClick={() => setConfirmingRestart(false)}
+                className="px-3 py-2 rounded-xl border text-sm font-medium"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {!confirmingEnd ? (
+            <button
+              onClick={() => setConfirmingEnd(true)}
+              className="px-4 py-2 rounded-xl border text-sm font-medium text-red-500"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              ⏹ End Quiz
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>End now?</span>
+              <button
+                onClick={handleSubmit}
+                className="px-3 py-2 rounded-xl bg-red-500 text-white text-sm font-medium"
+              >
+                Yes, end it
+              </button>
+              <button
+                onClick={() => setConfirmingEnd(false)}
+                className="px-3 py-2 rounded-xl border text-sm font-medium"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -207,7 +293,8 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
                 <button
                   key={j}
                   onClick={() => selectAnswer(i, j)}
-                  className={`text-left px-4 py-2 rounded-xl border ${style} transition-colors`}
+                  disabled={paused}
+                  className={`text-left px-4 py-2 rounded-xl border ${style} transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {opt}
                 </button>
@@ -220,15 +307,23 @@ export function InteractiveQuiz({ questions, onComplete, durationSeconds = 610 }
       {!submitted ? (
         <button
           onClick={handleSubmit}
-          disabled={Object.keys(answers).length !== questions.length}
+          disabled={Object.keys(answers).length !== questions.length || paused}
           className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-medium disabled:opacity-40"
         >
           Submit Quiz
         </button>
       ) : (
         <div className="mt-4 p-4 rounded-xl bg-indigo-50 text-indigo-700 font-semibold text-center">
-          You scored {score} / {questions.length} ({Math.round((score / questions.length) * 100)}%)
+          <p>
+            You scored {score} / {questions.length} ({Math.round((score / questions.length) * 100)}%)
+          </p>
           {timeLeft <= 0 && <p className="text-sm font-normal mt-1">Time ran out — auto-submitted.</p>}
+          <button
+            onClick={restartQuiz}
+            className="mt-4 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm"
+          >
+            🔄 Restart Quiz
+          </button>
         </div>
       )}
     </div>
