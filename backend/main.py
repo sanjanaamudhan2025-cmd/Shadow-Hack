@@ -51,6 +51,17 @@ class QuizRequest(BaseModel):
     num_questions: int = 5
 
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    text: str
+    question: str
+    history: list[ChatMessage] = []
+
+
 def ask_gemini(prompt: str):
     response = client.models.generate_content(
         model="gemini-3.6-flash",
@@ -136,3 +147,30 @@ Content:
 """
     summary = ask_gemini(prompt)
     return {"summary": summary}
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    history_text = ""
+    for msg in req.history:
+        speaker = "Student" if msg.role == "user" else "Tutor"
+        history_text += f"{speaker}: {msg.content}\n"
+
+    prompt = f"""
+You are a helpful study tutor. Answer the student's question using ONLY the textbook content below.
+If the answer isn't in the content, say so honestly instead of making something up.
+Keep answers clear and concise, using markdown formatting (bullet points, bold) where helpful.
+
+Textbook content:
+{req.text}
+
+Conversation so far:
+{history_text}
+
+Student's new question:
+{req.question}
+
+Tutor's answer:
+"""
+    answer = ask_gemini(prompt)
+    return {"answer": answer}

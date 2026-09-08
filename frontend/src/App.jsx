@@ -11,6 +11,7 @@ import Quiz from './pages/Quiz';
 import Profile from './pages/Profile';
 import Flashcards from './pages/Flashcards';
 import StudyGuide from './pages/StudyGuide';
+import ChatBot from './pages/ChatBot';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/quiz" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
               <Route path="/flashcards" element={<ProtectedRoute><Flashcards /></ProtectedRoute>} />
               <Route path="/study-guide" element={<ProtectedRoute><StudyGuide /></ProtectedRoute>} />
+              <Route path="/chatbot" element={<ProtectedRoute><ChatBot /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/login" />} />
             </Routes>

@@ -8,6 +8,7 @@ const links = [
   { to: '/quiz', label: 'Quiz', icon: '📝' },
   { to: '/flashcards', label: 'Flashcards', icon: '🗂️' },
   { to: '/study-guide', label: 'Study Guide', icon: '📄' },
+  { to: '/chatbot', label: 'Chatbot', icon: '💬' },
   { to: '/profile', label: 'Profile', icon: '👤' },
 ];
 
